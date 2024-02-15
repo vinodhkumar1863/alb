@@ -113,15 +113,6 @@ listener_response_user = elb_client.create_listener(
     ]
 )
 
-# Create a target group for the Lambda function
-lambda_target_group_response = elb_client.create_target_group(
-    Name='lambda-target-group',
-    Protocol='HTTP',
-    Port=80,
-    VpcId=vpc_response['Vpc']['VpcId'],
-    TargetType='lambda'
-)
-
 # Create a listener for the search path
 listener_response_search = elb_client.create_listener(
     LoadBalancerArn=response['LoadBalancers'][0]['LoadBalancerArn'],
@@ -134,6 +125,44 @@ listener_response_search = elb_client.create_listener(
         }
     ]
 )
+
+
+# Create a target group for the Lambda function
+lambda_target_group_response = elb_client.create_target_group(
+    Name='lambda-target-group',
+    Protocol='HTTP',
+    Port=80,
+    VpcId=vpc_response['Vpc']['VpcId'],
+    TargetType='lambda'
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Create a security group for the Application Load Balancer (ALB) to restrict traffic
 alb_security_group = ec2_client.create_security_group(
