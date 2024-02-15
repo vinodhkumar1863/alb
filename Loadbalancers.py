@@ -1,4 +1,5 @@
 import boto3
+import json
 
 # Create an EC2 client
 ec2_client = boto3.client('ec2')
@@ -132,4 +133,223 @@ listener_response_search = elb_client.create_listener(
             'TargetGroupArn': lambda_target_group_response['TargetGroups'][0]['TargetGroupArn']
         }
     ]
+)
+
+# Create a security group for the Application Load Balancer (ALB) to restrict traffic
+alb_security_group = ec2_client.create_security_group(
+    Description='Security group for Application Load Balancer',
+    GroupName='alb-security-group',
+    VpcId=vpc_response['Vpc']['VpcId']
+)
+
+# Authorize inbound rules for the ALB security group
+ec2_client.authorize_security_group_ingress(
+    GroupId=alb_security_group['GroupId'],
+    IpPermissions=[
+        {
+            'IpProtocol': 'TCP',
+            'FromPort': 80,
+            'ToPort': 80,
+            'UserIdGroupPairs': [{'GroupId': alb_security_group['GroupId']}]
+        },
+        # Add more Ingress rules as needed
+    ]
+)
+
+
+# Create a security group for the EC2 instances to restrict traffic from the ALB only
+instance_security_group = ec2_client.create_security_group(
+    Description='Security group for EC2 instances',
+    GroupName='instance-security-group',
+    VpcId=vpc_response['Vpc']['VpcId']
+)
+
+# Authorize inbound rule from the ALB security group to the instances
+ec2_client.authorize_security_group_ingress(
+    GroupId=instance_security_group['GroupId'],
+    IpPermissions=[
+        {
+            'IpProtocol': 'TCP',
+            'FromPort': 80,
+            'ToPort': 80,
+            'UserIdGroupPairs': [{'GroupId': alb_security_group['GroupId']}]
+        }
+    ]
+)
+
+
+
+
+
+# Create the IAM policy document for Lambda execution role
+lambda_execution_policy_document = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
+        # Add more permissions as per your Lambda function's requirements
+    ]
+}
+
+# Create an IAM role for the Lambda function
+lambda_execution_role = iam_client.create_role(
+    RoleName='LambdaExecutionRole',
+    AssumeRolePolicyDocument=json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "lambda.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    })
+)
+
+# Attach the execution policy to the role
+iam_client.put_role_policy(
+    RoleName=lambda_execution_role['Role']['RoleName'],
+    PolicyName='LambdaExecutionPolicy',
+    PolicyDocument=json.dumps(lambda_execution_policy_document)
+)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ #create rules to distribute traffic based on path parameter
+
+rule1=elb_client.create_rule(
+ListenerArn='listener1_arn',
+Conditions=[
+    {
+        'Field':'path-pattern',
+        'Values':['/user']
+    }
+],
+Priority=1,
+Actions=[
+    {
+        'Type': 'forward',
+        'TargetGroupArn': 'target_group1_arn'
+    }
+]
+)
+
+rule1=elb_client.create_rule(
+ListenerArn='listener1_arn',
+Conditions=[
+    {
+        'Field':'path-pattern',
+        'Values':['/search']
+    }
+],
+Priority=2,
+Actions=[
+    {
+        'Type': 'forward',
+        'TargetGroupArn': 'target_group2_arn'
+    }
+]
+)
+
+
+
+
+
+
+
+
+
+
+# You may also need to add more Ingress rules as per your requirements, such as SSH access, etc.
+
+
+import json
+
+# Create the IAM policy document for Lambda execution role
+lambda_execution_policy_document = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:*:*:*"
+        },
+        # Add more permissions as per your Lambda function's requirements
+    ]
+}
+
+# Create an IAM role for the Lambda function
+lambda_execution_role = iam_client.create_role(
+    RoleName='LambdaExecutionRole',
+    AssumeRolePolicyDocument=json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": "lambda.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+        }]
+    })
+)
+
+# Attach the execution policy to the role
+iam_client.put_role_policy(
+    RoleName=lambda_execution_role['Role']['RoleName'],
+    PolicyName='LambdaExecutionPolicy',
+    PolicyDocument=json.dumps(lambda_execution_policy_document)
 )
