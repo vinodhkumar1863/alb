@@ -1,6 +1,7 @@
 import boto3
 
 # Create a new session using boto3
+ec2_client = boto3.client('ec2')
 elbv2_client = boto3.client('elbv2')
 
 # Create an Application Load Balancer
@@ -59,6 +60,44 @@ for i in range(3, 6):
             }
         ]
     )
+
+# Create a security group for ALB to listen to only port 80, HTTP
+alb_security_group_id = ec2_client.create_security_group(
+    GroupName='alb-security-group',
+    Description='Security group for ALB to listen to only port 80',
+    VpcId='your-vpc-id'
+)['GroupId']
+
+ec2_client.authorize_security_group_ingress(
+    GroupId=alb_security_group_id,
+    IpPermissions=[
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 80,
+            'ToPort': 80,
+            'IpRanges': [{'CidrIp': '0.0.0.0/0'}]  # Replace with your specific IP range
+        }
+    ]
+)
+
+# Create a security group for instances to listen to only ALB
+instance_security_group_id = ec2_client.create_security_group(
+    GroupName='instance-security-group',
+    Description='Security group for instances to listen to only ALB',
+    VpcId='your-vpc-id'
+)['GroupId']
+
+ec2_client.authorize_security_group_ingress(
+    GroupId=instance_security_group_id,
+    IpPermissions=[
+        {
+            'IpProtocol': 'tcp',
+            'FromPort': 80,
+            'ToPort': 80,
+            'UserIdGroupPairs': [{'GroupId': alb_security_group_id}]
+        }
+    ]
+)
 
 # Create a weighted target group
 elbv2_client.create_listener(
